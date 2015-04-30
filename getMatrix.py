@@ -30,8 +30,27 @@ for index, row in df.iterrows():
     temp[int(row['Rec'])] += 1
     allPlayers[int(row['Passer'])] = temp
 
-print allPlayers
-print playersMap
+#print allPlayers
+#print playersMap
+
+def pagerank(prob,players,pageRank):
+  for player in players:
+    if player in playersMap:
+      #calculate pagerank of player
+      total = 0
+      for p in playersMap:
+        if p in allPlayers and p != player:
+          numerator = 0
+          denominator = 0
+          passesToPlayer = allPlayers[p]
+          if player in passesToPlayer:
+            numerator = passesToPlayer[player]
+            for a in passesToPlayer:
+              if a in playersMap:
+                denominator += passesToPlayer[a]
+            total += numerator * 1.0/denominator * pageRank[p]
+      pageRank[player] = total
+  return pageRank
 
 def closeness(player,w):
   passesFromPlayer = allPlayers[player]
@@ -45,9 +64,24 @@ def closeness(player,w):
     if p in allPlayers and p != player:
       passesToPlayer = allPlayers[p]
       if player in passesToPlayer:
-        if player in passesToPlayer:
-          totalTo += (1.0 / passesToPlayer[player])
+        totalTo += (1.0 / passesToPlayer[player])
         
   return (10 / (w * totalFrom + (1.0 - w) * totalTo))
   
-print str(playersMap[1]) + ' ' + str(closeness(1,0.5))
+for player in allPlayers:
+  if player in playersMap:
+    print str(playersMap[player]) + ' ' + str(closeness(player,0.5))
+    
+pageRank = {}
+for a in allPlayers:
+  if a in playersMap:
+    pageRank[a] = 1
+    
+prob = 0.5
+for i in range(1,11):
+  pageRank = pagerank(prob,allPlayers,pageRank)
+  
+print pageRank
+
+for p in pageRank:
+  print playersMap[p] + ' ' + str(pageRank[p])
