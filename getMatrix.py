@@ -85,3 +85,64 @@ print pageRank
 
 for p in pageRank:
   print playersMap[p] + ' ' + str(pageRank[p])
+  
+
+passStrings = []
+passString = []
+for index, row in df.iterrows():
+  if int(row['Passer']) > 0:
+    if len(passString) == 0:
+      passString.append(int(row['Passer']))
+    if int(row['Rec']) > 0:
+      passString.append(int(row['Rec']))
+    else:
+      passStrings.append(passString)
+      passString = []
+      
+print passStrings
+
+def mapTemp(passString):
+  betweenCounts = {}
+  for i in range(len(passString)):
+    for j in range(i+2,len(passString)):
+      if passString[j] == passString[i]:
+        break
+      for k in range(i+1,j-1):
+        if passString[k] in betweenCounts:
+          betweenCounts[passString[k]][str(passString[i])+'-'+str(passString[j])] += 1
+        else:
+          tempDict = collections.defaultdict(int)
+          tempDict[str(passString[i])+'-'+str(passString[j])] = 1
+          betweenCounts[passString[k]] = tempDict
+  return betweenCounts
+
+#print mapTemp(passStrings[0])
+finalBetweenCounts = {}
+for passString in passStrings:
+  betweenCounts = mapTemp(passString)
+  for player in betweenCounts:
+    if player in finalBetweenCounts:
+      for key in betweenCounts[player]:
+        finalBetweenCounts[player][key] += betweenCounts[player][key]
+    else:
+      tempDict = betweenCounts[player]
+      finalBetweenCounts[player] = tempDict
+      
+#print finalBetweenCounts
+
+def betweenness(player):
+  numerator = 0
+  denominator = 0
+  betweenValue = 0
+  if player in finalBetweenCounts:
+    betweenCounts = finalBetweenCounts[player]
+    for path in betweenCounts:
+      numerator = betweenCounts[path]
+      for p in finalBetweenCounts:
+        tempBetweenCounts = finalBetweenCounts[p]
+        denominator += tempBetweenCounts[path]
+      betweenValue += (numerator * 1.0) / denominator
+  return betweenValue
+  
+for player in finalBetweenCounts:
+  print playersMap[player] + ' ' + str(betweenness(player))
