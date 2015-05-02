@@ -6,10 +6,15 @@ Created on Mon Apr 27 20:39:56 2015
 """
 import pandas as pd
 import collections
+import copy
+import math
+import networkx as nx
 
 df = pd.DataFrame.from_csv('./ned-esp.txt', sep='\t')
 
-print df
+#print df
+
+G = nx.DiGraph()
 
 playersMap = {1:'Iker Casillas', 2:'Raul Albiol', 3:'Gerard Pique',
 4:'Carlos Marchena', 5:'Carlos Puyol', 6:'Andres Iniesta',
@@ -57,17 +62,21 @@ def closeness(player,w):
   totalFrom = 0
   for p in playersMap:
     if p in passesFromPlayer and p != player:
-      totalFrom += (1.0 / passesFromPlayer[p])
+      if passesFromPlayer[p] != 0:
+        totalFrom += (1.0 / passesFromPlayer[p])
   
   totalTo = 0
   for p in playersMap:
     if p in allPlayers and p != player:
       passesToPlayer = allPlayers[p]
       if player in passesToPlayer:
-        totalTo += (1.0 / passesToPlayer[player])
+        if passesToPlayer[player] != 0:
+          totalTo += (1.0 / passesToPlayer[player])
         
   return (10 / (w * totalFrom + (1.0 - w) * totalTo))
   
+print '---------------------'
+print 'Closeness'
 for player in allPlayers:
   if player in playersMap:
     print str(playersMap[player]) + ' ' + str(closeness(player,0.5))
@@ -81,7 +90,9 @@ prob = 0.5
 for i in range(1,11):
   pageRank = pagerank(prob,allPlayers,pageRank)
   
-print pageRank
+print '---------------------'
+print 'Page Rank'
+#print pageRank
 
 for p in pageRank:
   print playersMap[p] + ' ' + str(pageRank[p])
@@ -99,7 +110,7 @@ for index, row in df.iterrows():
       passStrings.append(passString)
       passString = []
       
-print passStrings
+#print passStrings
 
 def mapTemp(passString):
   betweenCounts = {}
@@ -125,7 +136,7 @@ for passString in passStrings:
       for key in betweenCounts[player]:
         finalBetweenCounts[player][key] += betweenCounts[player][key]
     else:
-      tempDict = betweenCounts[player]
+      tempDict = copy.deepcopy(betweenCounts[player])
       finalBetweenCounts[player] = tempDict
       
 #print finalBetweenCounts
@@ -144,5 +155,87 @@ def betweenness(player):
       betweenValue += (numerator * 1.0) / denominator
   return betweenValue
   
+print '---------------------'
+print 'Betweenness'
 for player in finalBetweenCounts:
   print playersMap[player] + ' ' + str(betweenness(player))
+  
+def getTriangleData(passString):
+  betweenCounts = {}
+  print passString
+  for i in range(len(passString) - 2):
+    j = i + 2
+    k = i + 1
+    if passString[k] in betweenCounts and passString[k] != passString[j] and passString[k] != passString[i]:
+      betweenCounts[passString[k]][str(passString[i])+'-'+str(passString[j])] += 1
+    elif passString[k] != passString[j] and passString[k] != passString[i]:
+      tempDict = collections.defaultdict(int)
+      tempDict[str(passString[i])+'-'+str(passString[j])] = 1
+      betweenCounts[passString[k]] = tempDict
+  return betweenCounts
+
+triangleData = {}
+for passString in passStrings:
+  betweenCounts = getTriangleData(passString)
+  for player in betweenCounts:
+    if player in triangleData:
+      for key in betweenCounts[player]:
+        triangleData[player][key] += betweenCounts[player][key]
+    else:
+      tempDict = copy.deepcopy(betweenCounts[player])
+      triangleData[player] = tempDict
+      
+def getClusteringCoeff(player,data):
+  outDegree = 0
+  clusteringCoeff = 0
+  if player in allPlayers:
+    passesFromPlayer = allPlayers[player]
+    for p1 in passesFromPlayer:
+      if p1 != player:
+        outDegree += passesFromPlayer[p1]
+  for player1 in data:
+    for player2 in data:
+      if player1 != player and player2 != player:
+        a = data[player1][player]
+        b = data[player1][player2]
+        c = data[player][player2]
+        numerator = math.pow((a * b * c),(1/3.0))
+        denominator = max(a,b,c)
+        #numerator = (data[player2][str(player1)+'-'+str(player2)] * data[player][str(player2)+'-'+str(player1)] * data[player1][str(player2)+'-'+str(player)]) ** (1/3.0)
+        #denominator = max(data[player2][str(player1)+'-'+str(player2)],data[player][str(player2)+'-'+str(player1)], data[player1][str(player2)+'-'+str(player)])
+        #print 'a: ' + str(a) + ' b: ' + str(b) + ' c: ' + str(c) + ' Numerator: ' + str(numerator) + ' Denominator: ' + str(denominator)
+        if denominator != 0:        
+          clusteringCoeff += (numerator * 1.0 / denominator);
+  #print 'coef ' + str(clusteringCoeff)
+  #print 'outdegree ' + str(outDegree)
+  #clusteringCoeff = clusteringCoeff/(outDegree * (outDegree - 1))
+  clusteringCoeff = clusteringCoeff / 90.0
+  return clusteringCoeff
+ 
+print '---------------------'
+print 'Triangle data'     
+print triangleData
+
+print '---------------------'
+print 'Between counts'      
+print finalBetweenCounts
+
+print '---------------------'
+print 'Clustering Coefficients'
+for p in allPlayers:
+  if p in playersMap:
+    print playersMap[p] + ' ' + str(getClusteringCoeff(p,allPlayers))
+    
+closeNessWeight = 0.1
+betweenNessWeight = 0.25
+pageRankWeight = 0.25
+clusterWeight = 0.4
+
+print '---------------------'
+print 'Total Score'
+score = {}
+for p in allPlayers:
+  if p in playersMap:
+    score[p] = closeNessWeight * closeness(p,0.5) + betweenNessWeight * betweenness(p)
+    + pageRankWeight * pageRank[p] + clusterWeight * getClusteringCoeff(p,allPlayers)
+    print playersMap[p] + ' ' + str(score[p])
