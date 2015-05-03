@@ -8,13 +8,13 @@ import pandas as pd
 import collections
 import copy
 import math
-import networkx as nx
+#import networkx as nx
 
 df = pd.DataFrame.from_csv('./ned-esp.txt', sep='\t')
 
 #print df
 
-G = nx.DiGraph()
+#G = nx.DiGraph()
 
 playersMap = {1:'Iker Casillas', 2:'Raul Albiol', 3:'Gerard Pique',
 4:'Carlos Marchena', 5:'Carlos Puyol', 6:'Andres Iniesta',
@@ -158,11 +158,10 @@ def betweenness(player):
 print '---------------------'
 print 'Betweenness'
 for player in finalBetweenCounts:
-  print playersMap[player] + ' ' + str(betweenness(player))
+  print playersMap[player] + ' ' + str(round(betweenness(player),3))
   
 def getTriangleData(passString):
   betweenCounts = {}
-  print passString
   for i in range(len(passString) - 2):
     j = i + 2
     k = i + 1
@@ -212,13 +211,13 @@ def getClusteringCoeff(player,data):
   clusteringCoeff = clusteringCoeff / 90.0
   return clusteringCoeff
  
-print '---------------------'
-print 'Triangle data'     
-print triangleData
+#print '---------------------'
+#print 'Triangle data'     
+#print triangleData
 
-print '---------------------'
-print 'Between counts'      
-print finalBetweenCounts
+#print '---------------------'
+#print 'Between counts'      
+#print finalBetweenCounts
 
 print '---------------------'
 print 'Clustering Coefficients'
@@ -239,3 +238,12 @@ for p in allPlayers:
     score[p] = closeNessWeight * closeness(p,0.5) + betweenNessWeight * betweenness(p)
     + pageRankWeight * pageRank[p] + clusterWeight * getClusteringCoeff(p,allPlayers)
     print playersMap[p] + ' ' + str(score[p])
+    
+'''for p in allPlayers:
+  if p in playersMap:
+    G.add_node(p)
+    passes = allPlayers[p]
+    for recipient in passes:
+      G.add_edge(p,recipient,weight=passes[recipient])
+      
+nx.draw(G)'''
